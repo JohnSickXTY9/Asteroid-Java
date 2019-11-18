@@ -6,7 +6,8 @@ import javafx.scene.Node;
 public class GameObj {
 
     private Node view;
-    private Point2D vel = new Point2D(0,0);
+    private double direction;
+    //private Point2D vel = new Point2D(0,0);
 
     private boolean alive = true;
 
@@ -14,18 +15,9 @@ public class GameObj {
         this.view = view;
     }
 
-    public void update() {
-        view.setTranslateX(view.getTranslateX() + vel.getX());
-        view.setTranslateY(view.getTranslateY() + vel.getY());
-    }
+    //public void setVel(Point2D vel) { this.vel = vel; }
 
-    public void setVel(Point2D vel) {
-        this.vel = vel;
-    }
-
-    public Point2D getVel() {
-        return vel;
-    }
+    //public Point2D getVel() { return vel; }
 
     public Node getView() {
         return view;
@@ -47,18 +39,17 @@ public class GameObj {
         return view.getRotate();
     }
 
-    public void moveForward(double drag) {
-        setVel(new Point2D(Math.cos(Math.toRadians(getRotate())) - drag, Math.sin(Math.toRadians(getRotate())) - drag));
+    public void moveForward (double moveSpeed, double x, double y) {
+        this.view.setTranslateX(this.view.getTranslateX() + Math.cos(Math.toRadians(getRotate())) * moveSpeed);
+        this.view.setTranslateY(this.view.getTranslateY() + Math.sin(Math.toRadians(getRotate())) * moveSpeed);
     }
 
-    public void rotateRight() {
-        view.setRotate(view.getRotate() + 5);
-        moveForward(0.1);
+    public void setDirection(double direction) {
+        this.direction = direction;
     }
 
-    public void rotateLeft() {
-        view.setRotate(view.getRotate() - 5);
-        moveForward(0.1);
+    public void rotate() {
+        this.view.setRotate(this.view.getRotate() + direction);
     }
 
     public boolean isColliding(GameObj other) {

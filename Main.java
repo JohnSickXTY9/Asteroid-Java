@@ -17,7 +17,10 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import org.w3c.dom.events.Event;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 import java.security.Key;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,24 +41,30 @@ public class Main extends Application {
         root.setStyle("-fx-background-color: black;");
 
         ship = new Ship();
-        ship.setVel(new Point2D(0,0));
+        //ship.setVel(new Point2D(0,0));
         addGameObj(ship, 300, 300);
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle(long l) {
-                onUpdate();
+                if (!ship.isDead()) {
+                    onUpdate();
+                }
             }
         };
 
         timer.start();
 
+        if (ship.isDead()) {
+            timer.stop();
+        }
+
         return root;
     }
 
-    private void addBullet(GameObj bullet, double x, double y) {
+    private void addBullet(GameObj bullet) {
         bullets.add(bullet);
-        addGameObj(bullet, x, y);
+        addGameObj(bullet, ship.getView().getTranslateX() + 8, ship.getView().getTranslateY());
     }
 
     private void addAsteroid(GameObj asteroid, double x, double y) {
@@ -81,15 +90,16 @@ public class Main extends Application {
             }
         }
 
+        for (GameObj asteroid: asteroids) {
+            if (asteroid.isColliding(ship)) {
+                ship.setAlive(false);
+            }
+        }
+
         bullets.removeIf(GameObj::isDead);
         asteroids.removeIf(GameObj::isDead);
 
-        bullets.forEach(GameObj::update);
-        asteroids.forEach(GameObj::update);
-
-        ship.update();
-
-        if (Math.random() < 0.02) {
+        if (Math.random() > 20000) {
             addAsteroid(new Asteroid(), Math.random() * root.getPrefWidth(), Math.random() * root.getPrefHeight());
         }
     }
@@ -98,31 +108,34 @@ public class Main extends Application {
         Polygon triangle = new Polygon();
 
         triangle.getPoints().addAll(new Double[]{
-                30.0, 10.0,
-                0.0, 0.0,
-                0.0, 20.0});
+                20.0, 0.0,
+                0.0, -10.0,
+                6.0, 0.0,
+                0.0, 10.0,
+        });
+
+        triangle.setRotate(270);
 
         triangle.setStroke(Color.WHITE);
 
         return  triangle;
     }
 
+    //public static Node createb
+
     private static class Ship extends GameObj {
-        Ship() {
-            //super(new Rectangle(40, 20, Color.AQUAMARINE));
-            super(createTriangle());
-        }
+        Ship() { super(createTriangle()); }
     }
 
     private static class Bullet extends GameObj {
         Bullet() {
-            super(new Circle(5,5,5, Color.WHITESMOKE));
+            super(new Circle(2,2,2, Color.WHITE));
         }
     }
 
     private static class Asteroid extends GameObj {
         Asteroid() {
-            super(new Circle(15,15, 15, Color.WHEAT));
+            super(new Circle(15,15, 15, Color.WHITE));
         }
     }
 
@@ -130,8 +143,73 @@ public class Main extends Application {
     public void start(Stage stage) throws Exception{
         stage.setScene(new Scene(makeStuff()));
         stage.show();
+
+        AnimationTimer movement = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                if (ship.isDead()) ship.moveForward(0,0,0);
+                else ship.moveForward(6,0,0);
+            }
+        };
+
+        AnimationTimer rotation = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                if (!ship.isDead()) {
+                    ship.rotate();
+                }
+            }
+        };
+
         stage.getScene().setOnKeyPressed( e -> {
-            if (e.getCode() == KeyCode.LEFT) {
+            if (!ship.isDead()) {
+                if (e.getCode() == KeyCode.LEFT) {
+                    ship.setDirection(5);
+                    rotation.start();
+                } else if (e.getCode() == KeyCode.RIGHT) {
+                    ship.setDirection(-5);
+                    rotation.start();
+                }
+
+                if (e.getCode() == KeyCode.UP) {
+                    movement.start();
+                }
+
+                if (e.getCode() == KeyCode.SPACE) {
+                    Bullet bullet = new Bullet();
+                    bullet.moveForward(12, ship.getView().getTranslateX(), ship.getView().getTranslateY());
+
+                }
+            }
+
+
+        });
+
+        stage.getScene().setOnKeyReleased( e -> {
+            if (!ship.isDead()) {
+                if (e.getCode() == KeyCode.LEFT) {
+                    rotation.stop();
+                } else if (e.getCode() == KeyCode.RIGHT) {
+                    rotation.stop();
+                }
+
+                if (e.getCode() == KeyCode.UP) {
+                    movement.stop();
+                }
+
+                if (e.getCode() == KeyCode.SPACE) {
+                    Bullet bullet = new Bullet();
+                    //bullet.setVel(ship.getVel().normalize().multiply(6));
+                    //addBullet(bullet, ship.getView().getTranslateX() - 1, ship.getView().getTranslateY());
+                }
+            }
+        });
+    }
+/*
+    public void mUpdate() {
+        if (ship.isDead()) { ship.setVel(new Point2D(0,0));
+        } else {
+            if (e.getActionCommand() ==) {
                 ship.rotateLeft();
             } else if (e.getCode() == KeyCode.RIGHT) {
                 ship.rotateRight();
@@ -143,11 +221,11 @@ public class Main extends Application {
 
             if (e.getCode() == KeyCode.SPACE) {
                 Bullet bullet = new Bullet();
-                bullet.setVel(ship.getVel().normalize().multiply(6));
+                bullet.setVel(ship.getVel().normalize().multiply(3));
                 addBullet(bullet, ship.getView().getTranslateX() - 1, ship.getView().getTranslateY());
             }
-        });
-    }
+        }
+    }*/
 
 
     public static void main(String[] args) {
