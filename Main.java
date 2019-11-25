@@ -7,6 +7,7 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
@@ -41,7 +42,6 @@ public class Main extends Application {
         root.setStyle("-fx-background-color: black;");
 
         ship = new Ship();
-        //ship.setVel(new Point2D(0,0));
         addGameObj(ship, 300, 300);
 
         AnimationTimer timer = new AnimationTimer() {
@@ -62,9 +62,11 @@ public class Main extends Application {
         return root;
     }
 
-    private void addBullet(GameObj bullet) {
+    private void addBullet(GameObj bullet, double x, double y) {
         bullets.add(bullet);
-        addGameObj(bullet, ship.getView().getTranslateX() + 8, ship.getView().getTranslateY());
+        addGameObj(bullet, x, y);
+        bullet.getView().setRotate(ship.getView().getRotate());
+        bullet.FindVelocity(ship);
     }
 
     private void addAsteroid(GameObj asteroid, double x, double y) {
@@ -79,6 +81,8 @@ public class Main extends Application {
     }
 
     private void onUpdate() {
+        for (GameObj bullet: bullets) { bullet.moveForward(12);}
+
         for (GameObj bullet: bullets) {
             for (GameObj asteroid: asteroids) {
                 if (bullet.isColliding(asteroid)) {
@@ -87,6 +91,10 @@ public class Main extends Application {
 
                     root.getChildren().removeAll(bullet.getView(), asteroid.getView());
                 }
+            }
+
+            if((bullet.getView().getTranslateX() < -5) || (bullet.getView().getTranslateX() > 610) || (bullet.getView().getTranslateY() < -5) || (bullet.getView().getTranslateY() > 610)) {
+                bullet.setAlive(false);
             }
         }
 
@@ -99,8 +107,8 @@ public class Main extends Application {
         bullets.removeIf(GameObj::isDead);
         asteroids.removeIf(GameObj::isDead);
 
-        if (Math.random() > 20000) {
-            addAsteroid(new Asteroid(), Math.random() * root.getPrefWidth(), Math.random() * root.getPrefHeight());
+        if (Math.random() < 0.1) {
+            //addAsteroid(new Asteroid(), Math.random() * root.getPrefWidth(), Math.random() * root.getPrefHeight());
         }
     }
 
@@ -108,10 +116,10 @@ public class Main extends Application {
         Polygon triangle = new Polygon();
 
         triangle.getPoints().addAll(new Double[]{
-                20.0, 0.0,
                 0.0, -10.0,
                 6.0, 0.0,
                 0.0, 10.0,
+                20.0, 0.0
         });
 
         triangle.setRotate(270);
@@ -120,8 +128,6 @@ public class Main extends Application {
 
         return  triangle;
     }
-
-    //public static Node createb
 
     private static class Ship extends GameObj {
         Ship() { super(createTriangle()); }
@@ -144,41 +150,97 @@ public class Main extends Application {
         stage.setScene(new Scene(makeStuff()));
         stage.show();
 
+        Label xAxis = new Label("X-Axis: " + Double.toString(ship.getView().getTranslateX()));
+        Label yAxis = new Label("Y-Axis: " + Double.toString(ship.getView().getTranslateY()));
+        yAxis.setTranslateY(10);
+        Label lRotate = new Label("Rotation: " + Double.toString(ship.getRotate()));
+        lRotate.setTranslateY(20);
+        Label Vel = new Label("Velocity: ( " + Double.toString(ship.getVelocity().getX()) + " , " + Double.toString(ship.getVelocity().getY()) + " )");
+        Vel.setTranslateY(30);
+        root.getChildren().addAll(lRotate, xAxis, yAxis, Vel);
+
         AnimationTimer movement = new AnimationTimer() {
             @Override
             public void handle(long l) {
-                if (ship.isDead()) ship.moveForward(0,0,0);
-                else ship.moveForward(6,0,0);
+                if (ship.isDead()) ship.moveForward(0);
+                else if (ship.getView().getTranslateX() < -10) {
+                    ship.getView().setTranslateX(600 - ship.getView().getTranslateX());
+                    System.out.println("1");
+
+                } else if (ship.getView().getTranslateY() < -10) {
+                    ship.getView().setTranslateY(600 - ship.getView().getTranslateY());
+                    System.out.println("2");
+
+                } else if (ship.getView().getTranslateX() > 620) {
+                    ship.getView().setTranslateX(ship.getView().getTranslateX() - 600);
+                    System.out.println("3");
+
+                } else if (ship.getView().getTranslateY() > 620) {
+                    ship.getView().setTranslateY(ship.getView().getTranslateY() - 600);
+                    System.out.println("4");
+                }
+                else {
+                    ship.moveForward(6/ship.getT());
+                }
+
+                ship.setT(ship.getT() + ship.getDrag());
+
+                //DEBUG STATS
+
+                xAxis.setText("X-Axis: " + Double.toString(ship.getView().getTranslateX()));
+                yAxis.setText("Y-Axis: " + Double.toString(ship.getView().getTranslateY()));
+                Vel.setText("Velocity: ( " + Double.toString(ship.getVelocity().getX()) + " , " + Double.toString(ship.getVelocity().getY()));
+
             }
         };
 
         AnimationTimer rotation = new AnimationTimer() {
             @Override
             public void handle(long l) {
-                if (!ship.isDead()) {
+                if (ship.isAlive()) {
                     ship.rotate();
+
+                    //DEBUG STATS
+
+                    lRotate.setText("Rotation: " + Double.toString(ship.getRotate()));
                 }
             }
         };
 
+        AnimationTimer findVel = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                ship.FindVelocity(ship);
+
+            }
+        };
+
         stage.getScene().setOnKeyPressed( e -> {
-            if (!ship.isDead()) {
+            if (ship.isAlive()) {
+                movement.start();
+
                 if (e.getCode() == KeyCode.LEFT) {
-                    ship.setDirection(5);
+                    ship.setDirection(-2.5);
                     rotation.start();
+
                 } else if (e.getCode() == KeyCode.RIGHT) {
-                    ship.setDirection(-5);
+                    ship.setDirection(2.5);
                     rotation.start();
                 }
 
                 if (e.getCode() == KeyCode.UP) {
-                    movement.start();
+                    ship.FindVelocity(ship);
+                    ship.setDrag(0);
+                    ship.setT(1);
+                    findVel.start();
+                }
+
+                if (e.getCode() == KeyCode.DOWN) {
+                    ship.setDrag(0.1);
                 }
 
                 if (e.getCode() == KeyCode.SPACE) {
-                    Bullet bullet = new Bullet();
-                    bullet.moveForward(12, ship.getView().getTranslateX(), ship.getView().getTranslateY());
-
+                    addBullet(new Bullet(), ship.getView().getTranslateX() + 8, ship.getView().getTranslateY() - 5);
                 }
             }
 
@@ -186,47 +248,21 @@ public class Main extends Application {
         });
 
         stage.getScene().setOnKeyReleased( e -> {
-            if (!ship.isDead()) {
-                if (e.getCode() == KeyCode.LEFT) {
-                    rotation.stop();
-                } else if (e.getCode() == KeyCode.RIGHT) {
+            if (ship.isAlive()) {
+                if ((e.getCode() == KeyCode.LEFT) || (e.getCode() == KeyCode.RIGHT)) {
                     rotation.stop();
                 }
 
                 if (e.getCode() == KeyCode.UP) {
-                    movement.stop();
+                    ship.setDrag(0.01);
+                    findVel.stop();
                 }
 
                 if (e.getCode() == KeyCode.SPACE) {
-                    Bullet bullet = new Bullet();
-                    //bullet.setVel(ship.getVel().normalize().multiply(6));
-                    //addBullet(bullet, ship.getView().getTranslateX() - 1, ship.getView().getTranslateY());
                 }
             }
         });
     }
-/*
-    public void mUpdate() {
-        if (ship.isDead()) { ship.setVel(new Point2D(0,0));
-        } else {
-            if (e.getActionCommand() ==) {
-                ship.rotateLeft();
-            } else if (e.getCode() == KeyCode.RIGHT) {
-                ship.rotateRight();
-            }
-
-            if (e.getCode() == KeyCode.UP) {
-                ship.moveForward(0);
-            }
-
-            if (e.getCode() == KeyCode.SPACE) {
-                Bullet bullet = new Bullet();
-                bullet.setVel(ship.getVel().normalize().multiply(3));
-                addBullet(bullet, ship.getView().getTranslateX() - 1, ship.getView().getTranslateY());
-            }
-        }
-    }*/
-
 
     public static void main(String[] args) {
         launch(args);
